@@ -2,7 +2,8 @@ from copy import deepcopy
 from typing import Dict, Union
 from src.server.task import Session
 from .utils import get_team_result, get_vote_result, get_assassination_result, get_believed_player_sides
-from .prompts import CHECK_CHOOSE_TEAM_PROMPT, CHECK_VOTE_ON_QUEST_PROMPT, CHECK_VOTE_ON_TEAM_PROMPT, CHECK_ASSASSINATE_PROMPT, CHECK_BELIEVED_SIDES_PROMPT
+from .prompts import CHECK_CHOOSE_TEAM_PROMPT, CHECK_VOTE_ON_QUEST_PROMPT, CHECK_VOTE_ON_TEAM_PROMPT, \
+    CHECK_ASSASSINATE_PROMPT, CHECK_BELIEVED_SIDES_PROMPT
 from src.typings import SampleStatus
 from src.typings import AgentContextLimitException
 from .avalon_exception import AvalonAgentActionException
@@ -10,8 +11,9 @@ from src.utils import ColorMessage
 
 from multi_agent.typings import FakeSession, Proxy
 
+
 class FakeSession:
-    history: list=[]    # Fake history
+    history: list = []  # Fake history
 
     async def action(self, input: Dict):
         # try:
@@ -23,6 +25,7 @@ class FakeSession:
     def inject(self, input: Dict):
         pass
 
+
 class SessionWrapper:
     def __init__(self, session: Union[Session, FakeSession], proxy: Proxy):
         self.session = session
@@ -30,6 +33,7 @@ class SessionWrapper:
         self.decorate_method('action')
         self.decorate_method('inject')
         self.decorate_method('parse_result')
+        self.log = []
 
     def balance_history(self):
         '''
@@ -60,6 +64,10 @@ class SessionWrapper:
                 'role': input['role'],
                 'content': input['content']
             })
+            self.log.append({
+                'role': input['role'],
+                'content': input['content']
+            })
         elif isinstance(self.session, FakeSession):
             pass
 
@@ -70,27 +78,34 @@ class SessionWrapper:
                 'role': input['role'],
                 'content': input['content']
             })
+            self.log.append({
+                'role': input['role'],
+                'content': input['content']
+            })
             response = await self.session.action()
 
             if response.status == SampleStatus.AGENT_CONTEXT_LIMIT:
                 raise AgentContextLimitException()
             if response.content is None:
                 raise RuntimeError("Response content is None.")
+            self.log.append({
+                'role': 'agent', 'content': response.content
+            })
             return response.content
         elif isinstance(self.session, FakeSession):
             return input.pop('naive_result', None)
-        
+
     async def parse_result(self, input: Dict, result: str):
         # print(result)
         mode = input['mode']
-        past_history = deepcopy(self.session.history) # Store the history before the action
+        past_history = deepcopy(self.session.history)  # Store the history before the action
         # print("Past history: ", past_history)
-        self.session.history = [] # Clear the history
-        if mode == "choose_quest_team_action":
+        self.session.history = []  # Clear the history
+        if "choose_quest_team_action" in mode:
             team_size = input['team_size']
             self.session.inject({
                 "role": "user",
-                "content": result + '\n\n' + CHECK_CHOOSE_TEAM_PROMPT
+                "content": 'The player says:' + result + '\n\n' + CHECK_CHOOSE_TEAM_PROMPT
             })
             answer = await self.session.action()
             answer = answer.content
@@ -104,8 +119,8 @@ class SessionWrapper:
                 })
                 answer = await self.session.action()
                 answer = answer.content
-                past_history = deepcopy(self.session.history) # Update the history
-                self.session.history = [] # Clear the history
+                past_history = deepcopy(self.session.history)  # Update the history
+                self.session.history = []  # Clear the history
 
                 self.session.inject({
                     "role": "user",
@@ -122,9 +137,9 @@ class SessionWrapper:
 
         elif mode == "vote_on_team":
             self.session.inject({
-                "role": "user",
-                "content": result + '\n\n' + CHECK_VOTE_ON_TEAM_PROMPT
-            })
+                    "role": "user",
+                    "content": 'The player says:' + result + '\n\n' + CHECK_VOTE_ON_TEAM_PROMPT
+                })
             answer = await self.session.action()
             answer = answer.content
             answer = get_vote_result(answer)
@@ -143,15 +158,15 @@ class SessionWrapper:
                 })
                 answer = await self.session.action()
                 answer = answer.content
-                past_history = deepcopy(self.session.history) # Update the history
-                self.session.history = [] # Clear the history
-
-                self.session.inject({
-                    "role": "user",
-                    "content": answer + '\n\n' + CHECK_VOTE_ON_TEAM_PROMPT
-                })
-                answer = await self.session.action()
-                answer = answer.content
+                past_history = deepcopy(self.session.history)  # Update the history
+                self.session.history = []  # Clear the history
+                if answer not in ["No", "Yes"]:
+                    self.session.inject({
+                        "role": "user",
+                        "content": answer + '\n\n' + CHECK_VOTE_ON_TEAM_PROMPT
+                    })
+                    answer = await self.session.action()
+                    answer = answer.content
                 answer = get_vote_result(answer)
             try:
                 answer = result_dict[answer]
@@ -160,11 +175,12 @@ class SessionWrapper:
 
         elif mode == "vote_on_mission":
             self.session.inject({
-                "role": "user",
-                "content": result + '\n\n' + CHECK_VOTE_ON_QUEST_PROMPT
-            })
+                    "role": "user",
+                    "content": 'The player says:' + result + '\n\n' + CHECK_VOTE_ON_QUEST_PROMPT
+                })
             answer = await self.session.action()
             answer = answer.content
+
             answer = get_vote_result(answer)
 
             result_dict = {
@@ -181,15 +197,15 @@ class SessionWrapper:
                 })
                 answer = await self.session.action()
                 answer = answer.content
-                past_history = deepcopy(self.session.history) # Update the history
-                self.session.history = [] # Clear the history
-
-                self.session.inject({
-                    "role": "user",
-                    "content": answer + '\n\n' + CHECK_VOTE_ON_QUEST_PROMPT
-                })
-                answer = await self.session.action()
-                answer = answer.content
+                past_history = deepcopy(self.session.history)  # Update the history
+                self.session.history = []  # Clear the history
+                if answer not in ["No", "Yes"]:
+                    self.session.inject({
+                        "role": "user",
+                        "content": 'The player says:' + answer + '\n\n' + CHECK_VOTE_ON_QUEST_PROMPT
+                    })
+                    answer = await self.session.action()
+                    answer = answer.content
                 answer = get_vote_result(answer)
             try:
                 answer = result_dict[answer]
@@ -199,7 +215,7 @@ class SessionWrapper:
         elif mode == "assassination":
             self.session.inject({
                 "role": "user",
-                "content": result + '\n\n' + CHECK_ASSASSINATE_PROMPT
+                "content": "The player says:" + result + '\n\n' + CHECK_ASSASSINATE_PROMPT
             })
             answer = await self.session.action()
             answer = answer.content
@@ -207,7 +223,7 @@ class SessionWrapper:
         elif mode == "get_believed_sides":
             self.session.inject({
                 "role": "user",
-                "content": result + '\n\n' + CHECK_BELIEVED_SIDES_PROMPT
+                "content": "The player says:" + result + '\n\n' + CHECK_BELIEVED_SIDES_PROMPT
             })
             answer = await self.session.action()
             answer = answer.content

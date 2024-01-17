@@ -134,4 +134,4 @@ if __name__ == "__main__":
     while True:
         input()
 
-# try: python start_task.py ../configs/server/test.yaml -a
+# try: python start_task.py --config ../configs/test.yaml -a

@@ -3,8 +3,6 @@ Bots that work on OpenSpiel game environments
 """
 
 # import libraries
-import random
-import pyspiel
 import numpy as np
 from open_spiel.python.algorithms import mcts, minimax, tabular_qlearner, nash_averaging
 

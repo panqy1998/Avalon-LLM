@@ -4,21 +4,25 @@ from ..engine import AvalonBasicConfig
 from ..wrapper import SessionWrapper, Session
 from ..prompts import *
 from copy import deepcopy
-from ..utils import verbalize_team_result, verbalize_mission_result
+from ..utils import verbalize_team_result, verbalize_mission_result, get_team_result
 from src.utils import ColorMessage
+
 
 class LLMAgentWithDiscussion(Agent):
     r"""LLM agent with the ability to discuss with other agents."""
 
-    def __init__(self, name: str, num_players: int, id: int, role: int, role_name: str, config:AvalonBasicConfig, session: SessionWrapper=None, side=None, seed=None, **kwargs):
+    def __init__(self, name: str, num_players: int, id: int, role: int, role_name: str, config: AvalonBasicConfig,
+                 session: SessionWrapper = None, side=None, seed=None, **kwargs):
         self.name = name
         self.id = id
         self.num_players = num_players
         self.role = role
         self.role_name = role_name
-        self.side = side # 1 for good, 0 for evil
+        self.side = side  # 1 for good, 0 for evil
         self.session = session
         self.discussion = kwargs.pop('discussion', None)
+        self.prompt = kwargs.pop('prompt', 'COT')
+        self.infer_relation = []
         for key, value in kwargs.items():
             setattr(self, key, value)
 
@@ -31,18 +35,23 @@ class LLMAgentWithDiscussion(Agent):
 
     def __repr__(self):
         return self.name
-    
+
     def see_sides(self, sides):
         self.player_sides = sides
-    
+
     async def initialize_game_info(self, player_list) -> None:
         """Initiliaze the game info for the agent, which includes game introduction, role, and reveal information for different roles."""
         # Introduction Prompt
         verbal_side = ["Evil", "Good"]
         intro_prompt = INTRODUCTION
         intro_prompt += '\n'
-        content_prompt = intro_prompt + INFO_ROLE.format(self.num_players, self.num_good, int(self.merlin), self.num_good - int(self.merlin) - int(self.percival), self.num_evil, self.num_evil - int(self.morgana) - int(self.mordred) - int(self.oberon) - 1)
-        identity_prompt = INFO_YOUR_ROLE.format(self.name, self.role_name, verbal_side[self.side]) # and do not pretend to be other roles throughout the game."
+        content_prompt = intro_prompt + INFO_ROLE.format(self.num_players, self.num_good, int(self.merlin),
+                                                         self.num_good - int(self.merlin) - int(self.percival),
+                                                         self.num_evil,
+                                                         self.num_evil - int(self.morgana) - int(self.mordred) - int(
+                                                             self.oberon) - 1)
+        identity_prompt = INFO_YOUR_ROLE.format(self.name, self.role_name, verbal_side[
+            self.side])  # and do not pretend to be other roles throughout the game."
         self.identity_prompt = identity_prompt
 
         # Reveal Prompt
@@ -72,7 +81,8 @@ class LLMAgentWithDiscussion(Agent):
                 reveal_info = REVEAL_PROMPTS['Minion'][1].format(', '.join(minion_list))
         if self.role_name == "Assassin":
             if len(minion_list) == 1:
-                reveal_info = REVEAL_PROMPTS['Assassin'][0].format(', '.join(minion_list), ', '.join(servant_list + [merlin]))
+                reveal_info = REVEAL_PROMPTS['Assassin'][0].format(', '.join(minion_list),
+                                                                   ', '.join(servant_list + [merlin]))
 
         # Seperately pass the reveal info to the agent, so as to meet the requirement in filer_messages
         # TODO: is `system` allowed? 
@@ -91,16 +101,15 @@ class LLMAgentWithDiscussion(Agent):
     async def summarize(self) -> None:
         summary = await self.session.action({
             "role": "user",
-            "content": "Please summarize the history. Try to keep all useful information, including your identity, other player's identities, and your observations in the game.",
+            "content": "You are Player {}. Your identity is {}. Please summarize the history. "
+                       "Try to keep all useful information, "
+                       "including your identity, other player's identities, and your observations in the game.".format(
+                self.id, self.role_name),
             "mode": "summarize"
         })
         # print("Summary: ", summary)
         past_history = deepcopy(self.session.get_history())
         self.session.overwrite_history(past_history[:2])
-        self.session.inject({
-            'role': "user",
-            'content': summary
-        })
         # print("History after summarization: ", self.session.get_history())
 
     async def observe_mission(self, team, mission_id, num_fails, votes, outcome) -> None:
@@ -111,51 +120,84 @@ class LLMAgentWithDiscussion(Agent):
             "role": "user",
             "content": verbalize_team_result(team, votes, outcome),
         })
-    
+
     async def get_believed_sides(self, num_players: int) -> List[float]:
+        await self.summarize()
         input = {
             "role": "user",
-            "content": "To what extend do you believe each player to be Good, from Player 0 to Player 4? Please output probabilities within [0, 1] and round to two decimal places. If you are not sure, you can simply output 0.5.",
+            "content": GET_BELIEVED_SIDES.format(self.id),
             "mode": "get_believed_sides",
         }
         believed_player_sides = await self.session.action(input)
 
         believed_player_sides = await self.session.parse_result(
-            input   =   input,
-            result  =   believed_player_sides
+            input=input,
+            result=believed_player_sides
         )
         print("Sides: ", believed_player_sides)
+        self.infer_relation = believed_player_sides
         return believed_player_sides
 
     async def discussion_end(self, leader: str, leader_statement: str, discussion_history: List[str]):
-        content_prompt = f"Discussion has ended. Here are the contents:\nStatement from Leader {leader}: \n\"{leader_statement}\"\nAnd words from other players:\n{' '.join(discussion_history)}"
+        content_prompt = (f"Discussion has ended. "
+                          f"Here are the contents:\nStatement from Leader {leader}: \n\"{leader_statement}\"\n"
+                          f"And words from other players:\n{' '.join(discussion_history)}")
         self.session.inject({
             "role": "user",
             "content": content_prompt,
         })
-                            
+        await self.summarize()
 
     async def team_discussion(self, team_size, team, team_leader_id, discussion_history, mission_id):
         """Team discussion phase.
 
         We also summarize the history before this phase at each round. If there's no discussion phase, we summarize the history before the vote phase.
         """
-        await self.summarize()
+        if mission_id != 0:
+            await self.summarize()
 
         fails_required = self.config.num_fails_for_quest[mission_id]
         if self.id == team_leader_id:
-            content_prompt = CHOOSE_TEAM_LEADER
+            content_prompt = CHOOSE_TEAM_ACTION.format(team_size, self.num_players - 1) + " " + CHOOSE_TEAM_LEADER
+            input = {"content": content_prompt, "mode": "choose_quest_team_action with discussion", "role": "user",
+                     "team": team, "team_leader_id": team_leader_id, "team_size": team_size}
+            statement = await self.session.action(input)
+            proposed_team = await self.session.parse_result(input, statement)
+            print()
+            print(ColorMessage.cyan(f"##### LLM Agent (Player {self.id}, Role: {self.role_name}) #####"))
+            print()
+            print(ColorMessage.blue(f"Said: {statement}"))
+            return proposed_team, statement
         else:
-            content_prompt = content_prompt = ' '.join(discussion_history) + ' ' + VOTE_TEAM_DISCUSSION.format(list(team))
+            content_prompt = ' '.join(discussion_history) + ' ' + VOTE_TEAM_DISCUSSION.format(self.id, list(team))
+            input = {"content": content_prompt, "role": "user"}
+            discussion = await self.session.action(input)
+            print()
+            print(ColorMessage.cyan(f"##### LLM Agent (Player {self.id}, Role: {self.role_name}) #####"))
+            print()
+            print(ColorMessage.blue(f"Said: {discussion}"))
+            return discussion
 
     async def quest_discussion(self, team_size, team, team_leader_id, discussion_history, mission_id):
         fails_required = self.config.num_fails_for_quest[mission_id]
 
-    
     async def propose_team(self, team_size, mission_id, discussion_history):
-        content_prompt = CHOOSE_TEAM_ACTION.format(team_size, self.num_players-1)
-
-        thought = COTHOUGHT_PROMPT
+        if not discussion_history:
+            await self.summarize()
+        content_prompt = CHOOSE_TEAM_ACTION.format(team_size, self.num_players - 1)
+        if self.prompt == "COT":
+            thought = COTHOUGHT_PROMPT
+        elif self.prompt == "RELATION":
+            thought = RELATION_PROMPT.format(*self.infer_relation)
+        elif self.prompt == "ICL":
+            if self.role_name == "minion":
+                thought = ICL_PROPOSE_TEAM_MINION_PROMPT
+            elif self.role_name == "assasin":
+                thought = ICL_PROPOSE_TEAM_ASSASIN_PROMPT
+            else:
+                thought = ICL_PROPOSE_TEAM_PROMPT
+        else:
+            thought = ""
         input = {
             "role": "user",
             "content": content_prompt + '\n' + thought,
@@ -169,9 +211,14 @@ class LLMAgentWithDiscussion(Agent):
         print()
         print(ColorMessage.cyan(f"##### LLM Agent (Player {self.id}, Role: {self.role_name}) #####"))
         print()
-        print(ColorMessage.blue("Thought:") + " " + proposed_team)
+        print(ColorMessage.blue(f"Thought: {proposed_team}"))
 
-        if isinstance(self.session.session, Session):
+        if proposed_team[0] == "[" and proposed_team[-1] == "]":
+            proposed_team2 = get_team_result(proposed_team)
+            if proposed_team2 != team_size:
+                proposed_team2 = await self.session.parse_result(input, proposed_team)
+            proposed_team = proposed_team2
+        elif isinstance(self.session.session, Session):
             proposed_team = await self.session.parse_result(input, proposed_team)
         proposed_team = frozenset(proposed_team)
 
@@ -181,19 +228,20 @@ class LLMAgentWithDiscussion(Agent):
             raise ValueError(
                 "Type of proposed_team must be frozenset, instead of {}.".format(type(proposed_team))
             )
-        
-    
+
     async def vote_on_team(self, team, mission_id, discussion_history):
         """Vote to approve or reject a team.
 
         If there's no discussion phase, we will summarize the history before the vote phase.
         """
-        if not self.discussion:
+        if not discussion_history:
             await self.summarize()
 
-        content_prompt = VOTE_TEAM_ACTION.format(list(team))
-        
-        thought = COTHOUGHT_PROMPT
+        content_prompt = VOTE_TEAM_ACTION.format(self.id, list(team))
+        if self.prompt == "COT":
+            thought = COTHOUGHT_PROMPT
+        elif self.prompt == "RELATION":
+            thought =
         input = {
             "role": "user",
             "content": content_prompt + "\n" + thought,
@@ -207,10 +255,17 @@ class LLMAgentWithDiscussion(Agent):
         print()
         print(ColorMessage.cyan(f"##### LLM Agent (Player {self.id}, Role: {self.role_name}) #####"))
         print()
-        print(ColorMessage.blue("Thought:") + " " + vote_result)
-
-        if isinstance(self.session.session, Session):
-            vote_result = await self.session.parse_result(input, vote_result)
+        print(ColorMessage.blue(f"Thought: {vote_result}"))
+        if vote_result not in ["Yes", "No"]:
+            if isinstance(self.session.session, Session):
+                vote_result = await self.session.parse_result(input, vote_result)
+        else:
+            vote_result = 1 if vote_result == "Yes" else 0
+            verbal_team_act = {
+                0: "Reject the team",
+                1: "Approve the team"
+            }
+            print(ColorMessage.blue("Action:") + " ", verbal_team_act[vote_result])
 
         if isinstance(vote_result, int):
             return vote_result
@@ -218,8 +273,9 @@ class LLMAgentWithDiscussion(Agent):
             raise ValueError(
                 "Vote result should be either 0 or 1, instead of {}.".format(type(vote_result))
             )
-    
+
     async def vote_on_mission(self, team, mission_id, discussion_history):
+        await self.summarize()
         content_prompt = VOTE_MISSION_ACTION.format(list(team))
 
         thought = COTHOUGHT_PROMPT
@@ -236,26 +292,28 @@ class LLMAgentWithDiscussion(Agent):
         print()
         print(ColorMessage.cyan(f"##### LLM Agent (Player {self.id}, Role: {self.role_name}) #####"))
         print()
-        print(ColorMessage.blue("Thought:") + " " + vote_result)
-
-        if isinstance(self.session.session, Session):
-            vote_result = await self.session.parse_result(input, vote_result)
+        print(ColorMessage.blue(f"Thought: {vote_result}"))
+        if vote_result not in ["Yes", "No"]:
+            if isinstance(self.session.session, Session):
+                vote_result = await self.session.parse_result(input, vote_result)
+        else:
+            vote_result = 1 if vote_result == "Yes" else 0
         if isinstance(vote_result, int):
             return vote_result
         else:
             raise ValueError(
                 "Vote result should be either 0 or 1, instead of {}.".format(type(vote_result))
             )
-        
 
     async def assassinate(self):
         if self.role != 7:
             raise ValueError("Only the Assassin can assassinate.")
-        
+        await self.summarize()
+
         thought = COTHOUGHT_PROMPT
         input = {
             "role": "user",
-            "content": ASSASSINATION_PHASE.format(self.num_players-1) + "\n" + thought,
+            "content": ASSASSINATION_PHASE.format(self.num_players - 1) + "\n" + thought,
             "mode": "assassination",
             "seed": self.seed,
             "role_name": self.role_name,
@@ -265,10 +323,12 @@ class LLMAgentWithDiscussion(Agent):
         print()
         print(ColorMessage.cyan(f"##### LLM Agent (Player {self.id}, Role: {self.role_name}) #####"))
         print()
-        print(ColorMessage.blue("Thought:") + " " + assassinate_result)
-
-        if isinstance(self.session.session, Session):
-            assassinate_result = await self.session.parse_result(input, assassinate_result)
+        print(ColorMessage.blue(f"Thought: {assassinate_result}"))
+        try:
+            assassinate_result = int(assassinate_result)
+        except ValueError:
+            if isinstance(self.session.session, Session):
+                assassinate_result = await self.session.parse_result(input, assassinate_result)
 
         if isinstance(assassinate_result, int):
             return assassinate_result

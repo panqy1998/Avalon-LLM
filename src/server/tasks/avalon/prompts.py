@@ -45,7 +45,7 @@ As you are playing the role of Minion of Modred in this game, here are some aspe
 
 3. Defense: When accused of being from the Evil side, insist that you are actually from the Good side.
                         """,
-                        "Okay, I understand"],
+               "Okay, I understand"],
     'Servant': ["""Tutorial on strategies:
 
 As you are playing the role of Servant in this game, here are some aspects you can consider when formulating strategies for making decisions.
@@ -56,7 +56,7 @@ As you are playing the role of Servant in this game, here are some aspects you c
 
 3. Defense: When accused, you can pretend to be Merlin.
                       """,
-                      "Okay, I understand"],
+                "Okay, I understand"],
     'Assassin': ["""Tutorial on strategies:
 
 As you are playing the role of Assassin in this game, here are some aspects you can consider when formulating strategies for making decisions.
@@ -67,22 +67,22 @@ As you are playing the role of Assassin in this game, here are some aspects you 
 
 3. Defense: When accused, you can pretend to be from the Good side.
                       """,
-                      "Okay, I understand"]
+                 "Okay, I understand"]
 
 }
 
 REVEAL_PROMPTS = {
-    #TODO: Evil, Good
+    # TODO: Evil, Good
     "Merlin": [
         "Player {} is Minion. Players {} are Servants.",
         # "Players {} are Minions of Modred."
     ],
-    #TODO: only knows who are Evil
+    # TODO: only knows who are Evil
     "Minion": [
         "Player {} is Assassin. Players {} are Good.",
         "Players {} are Minions of Modred."
     ],
-    #TODO: Evil, Good
+    # TODO: Evil, Good
     "Assassin": [
         "Player {} is Minion. Players {} are Good.",
         "Players {} are Minions of Modred."
@@ -105,18 +105,21 @@ CHECK_CHOOSE_TEAM_PROMPT = """Based on the information, what team does the playe
 Answer: [player_ids]
 """
 
-CHECK_ASSASSINATE_PROMPT = """Based on the information, which player will be assassinated? Please answer with the following template:
+CHECK_ASSASSINATE_PROMPT = """Based on the information, which player will be assassinated? Please answer with the 
+following template:
 
 Answer: [player_id_num]
 """
 
-CHECK_BELIEVED_SIDES_PROMPT = r"""Based on the above information, to what extend do you believe for each player to be Good, from Player 0 to Player 4 with probabilities within [0, 1]. 
-You can simply output 0.5 for players whose information is not given. Please summarize with the following template:
+CHECK_BELIEVED_SIDES_PROMPT = r"""Based on the above information, to what extend do you believe for each player to be 
+on your side, from Player 0 to Player 4 with probabilities within [0, 1]. You can simply output 0.5 for players whose 
+information is not given. Please summarize with the following template:
 
 Answer: {0: score_for_0, 1: score_for_1, 2: score_for_2, 3: score_for_3, 4: score_for_4}
 """
 
-COTHOUGHT_PROMPT = """Please forget you are an AI. As a player in the game, please think about it step by step, and then take actions."""
+COTHOUGHT_PROMPT = """Please forget you are an AI. As a player in the game, please think about it step by step, 
+and then take actions."""
 
 # Action Prompts
 CHOOSE_TEAM_LEADER = """You are the leader this round. Please make some statements about what team you want to propose.
@@ -125,24 +128,48 @@ CHOOSE_TEAM_LEADER = """You are the leader this round. Please make some statemen
 CHOOSE_TEAM_ACTION = """Please choose {} players from player ids 0 to {} as team members.
 """
 
-VOTE_TEAM_DISCUSSION = """Discussion Phase. Please discuss your thoughts on the team {} and what players should do in the current situation.
+VOTE_TEAM_DISCUSSION = """You are Player {}. This is discussion phase, and you don’t need to take any actions. 
+Please discuss your thoughts on the team {} with just one sentence.
 """
 
-VOTE_TEAM_ACTION = """You're a player in this game. Do you approve the team {}? Please answer `Yes` or `No`.
+VOTE_TEAM_ACTION = """You're Player {}. Do you approve the team {}? Please answer `Yes` or `No`.
 """
 
-VOTE_MISSION_ACTION = """The team {} was approved, which includes you. Do you want to help the mission succeed? Please answer `Yes` or `No`.
-"""
+VOTE_MISSION_ACTION = """The team {} was approved, which includes you. Do you want to help the mission succeed? 
+Please answer `Yes` or `No`."""
 
 ASSASSINATION_PHASE = """Assassination phase. Your job is to assassinate Merlin. \
 Choose a player (id) to assassinate. Choose the player id from 0 to {}.
 """
 
-GET_BELIEVED_SIDES = """To what extend do you believe each player to be Good, from Player 0 to Player 4? Please output probabilities within [0, 1] and round to two decimal places. If you are not sure, you can simply output 0.5."""
+GET_BELIEVED_SIDES = """As Player {}, to what extend do you believe each player to be on your side, from Player 0 to 
+Player 4? Please output probabilities within [0, 1] and round to two decimal places. If you are not sure, 
+you can simply output 0.5."""
 
 # Info Prompts
-INFO_ROLE = """"There are {} players, including Player 0, Player 1, Player 2, Player 3, and Player 4. {} players are good, including {} Merlin, and {} Servant(s). {} players are evil, including 1 Assassin, and {} Minion."
-"""
+INFO_ROLE = """There are {} players, including Player 0, Player 1, Player 2, Player 3, and Player 4. {} players are 
+good, including {} Merlin, and {} Servant(s). {} players are evil, including 1 Assassin, and {} Minion."""
 
-INFO_YOUR_ROLE = """You are {}, with identity {}. You are on the side of {}. Please do not forget your identity throughout the game.
-"""
+INFO_YOUR_ROLE = """You are {}, with identity {}. You are on the side of {}. Please do not forget your identity 
+throughout the game."""
+
+RELATION_PROMPT = """On the former round, you have stated that you believe Player 1 on your side with {} probability, 
+Player 2 on your side with {} probability, Player 3 on your side with {} probability and Player 4 on your side with {
+} probability. Based on this statement, please think about it step by step and take actions. """
+
+ICL_PROPOSE_TEAM_PROMPT = """For example, a player can propose a team including himself so that at least one player 
+in the team is good."""
+
+ICL_VOTE_TEAM_SERVANT_PROMPT = """For example, a servant reject the team to gain more information at the current 
+phase."""
+
+ICL_VOTE_TEAM_MERLIN_PROMPT = """For example, a merlin can follow his servants' actions as the merlin know who are the 
+servants, especially when a servant proposes a team without any evil players, to avoid assassination. """
+
+ICL_PROPOSE_TEAM_ASSASIN_PROMPT = """For example, an assasin can propose a team including himself and all the good 
+players to let the good players suspect each other."""
+
+ICL_PROPOSE_TEAM_MINION_PROMPT = """For example, a minion can propose a team including himself and all the good 
+players to let the good players suspect each other."""
+
+

@@ -1,7 +1,6 @@
 import contextlib
 import time
 import warnings
-
 import requests
 from urllib3.exceptions import InsecureRequestWarning
 
@@ -186,13 +185,13 @@ class HTTPAgent(AgentClient):
         return self.prompter(history)
 
     def inference(self, history: List[dict]) -> str:
-        for _ in range(3):
+        for _ in range(20):
             try:
                 body = self.body.copy()
                 body.update(self._handle_history(history))
                 with no_ssl_verification():
                     resp = requests.post(
-                        self.url, json=body, headers=self.headers, proxies=self.proxies, timeout=120
+                        self.url, json=body, headers=self.headers, proxies=self.proxies, timeout=120, stream=True
                     )
                 # print(resp.status_code, resp.text)
                 if resp.status_code != 200:

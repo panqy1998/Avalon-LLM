@@ -27,6 +27,7 @@ class TaskClient:
         result = requests.get(
             self.controller_address + "/get_indices", params={"name": self.name}
         )
+        print(result)
         if result.status_code != 200:
             raise AgentBenchException(result.text, result.status_code, self.name)
         return result.json()

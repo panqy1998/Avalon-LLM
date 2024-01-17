@@ -1,0 +1,7 @@
+[
+    {
+        "num_players": 5,
+        "quest_leader": 1,
+        "role_names": ["Assassin", "Minion", "Servant", "Servant", "Merlin"]
+    }
+]

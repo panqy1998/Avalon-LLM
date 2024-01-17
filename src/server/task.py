@@ -32,7 +32,6 @@ class SessionController:
             return self.env_output
 
     async def env_pull(self, history: List[ChatHistoryItem]) -> AgentOutput:
-        # print(">> env pull waiting")
         async with self.env_lock:
             self.env_output.history = history
             self.agent_signal.release()
@@ -141,9 +140,7 @@ class Session:
         return return_messages
 
     async def action(self, *injection) -> AgentOutput:
-        # print("session.action")
         self.inject(list(injection))
-        # print("pulling env")
         agent_response = await self.controller.env_pull(
             self.filter_messages(self.history)
         )
