@@ -241,7 +241,9 @@ class LLMAgentWithDiscussion(Agent):
         if self.prompt == "COT":
             thought = COTHOUGHT_PROMPT
         elif self.prompt == "RELATION":
-            thought =
+            thought = RELATION_PROMPT.format(*self.infer_relation)
+        else:
+            thought = ""
         input = {
             "role": "user",
             "content": content_prompt + "\n" + thought,
