@@ -20,3 +20,4 @@ analysis
 Search/output
 client/agents/model
 src/client/agents/model
+configs/agents/openai-chat.yaml
