@@ -120,6 +120,15 @@ class TransformerAgent(AgentClient):
         self.body = body or {}
         self.return_format = return_format
         self.prompter = Prompter.get_prompter(prompter)
+        try:
+            self.model = AutoModelForCausalLM.from_pretrained(self.model_name, device_map="auto",
+                                                              load_in_4bit=self.load_in_4bit,
+                                                              token=self.access_token,
+                                                              cache_dir=self.cache_dir)
+            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, use_fast=self.use_fast,
+                                                           token=self.access_token)
+        except:
+            raise Exception("Cannot load {}".format(self.model_name))
 
     def _handle_history(self, history: List[dict]) -> Dict[str, Any]:
         return self.prompter(history)
@@ -129,18 +138,16 @@ class TransformerAgent(AgentClient):
             body = self.body.copy()
             body.update(self._handle_history(history))
             prompt = body["messages"]
-            try:
-                self.model = AutoModelForCausalLM.from_pretrained(self.model_name, device_map="auto",
-                                                                  load_in_4bit=self.load_in_4bit,
-                                                                  token=self.access_token,
-                                                                  cache_dir=self.cache_dir)
-                self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, use_fast=self.use_fast, token=self.access_token)
-            except:
-                raise Exception("Cannot load {}".format(self.model_name))
-            model_inputs = self.tokenizer.apply_chat_template(prompt, tokenize=True, add_generation_prompt=True, return_tensors="pt")
+            new_prompts = []
+            for i, message in enumerate(prompt):
+                if (message["role"] == "user") and (message["content"] != ""):
+                    new_prompts.append(message["content"])
+            new_prompt = [{"role": "user", "content": "\n".join(new_prompts)}]
+            model_inputs = self.tokenizer.apply_chat_template(new_prompt, tokenize=True, add_generation_prompt=True,
+                                                              return_tensors="pt")
             resp = self.model.generate(model_inputs, max_new_tokens=512)
-            resp = self.tokenizer.decode(resp[0]).cpu()
-            resp = resp[(resp.rfind("[INST]")+len("[INST]")):].replace("</s>", "")
+            resp = self.tokenizer.decode(resp[0])
+            resp = resp[(resp.rfind("[/INST]") + len("[/INST]")):].replace("</s>", "")
         except AgentClientException as e:
             raise e
         except Exception as e:

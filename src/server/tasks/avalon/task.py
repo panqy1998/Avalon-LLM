@@ -115,6 +115,7 @@ class AvalonBench(Task):
                 num_evil=env.config.num_evil,
                 discussion=self.discussion,
                 prompt=self.prompt,
+                sides=env.get_partial_sides(i),
                 seed=self.seed  # TODO: seed
             ))
             # If the player is Merlin or Evil, let them see the sides of all players.
@@ -157,12 +158,19 @@ class AvalonBench(Task):
                             mission_id=env.turn + env.round
                         )
                         discussion_history.append(f"Leader {leader} : " + statement + '\n')
+                        print()
+                        print(ColorMessage.cyan(f"##### LLM Agent (Player {leader}) #####"))
+                        print()
+                        print(ColorMessage.blue(f"Said: {statement}"))
 
                         # Discussion (sequential, once, in order for now) and Summarize
                         for idx, player in enumerate(player_list):
                             proxy.set_current_agent(idx)
                             if idx == leader:
                                 continue
+                            print()
+                            print(ColorMessage.cyan(f"##### LLM Agent (Player {idx}) #####"))
+                            print()
                             discussion = await player.team_discussion(
                                 team_size=env.get_team_size(),
                                 team=team,
@@ -171,14 +179,16 @@ class AvalonBench(Task):
                                 mission_id=env.turn + env.round
                             )
                             discussion_history.append(f"Player {idx} : " + discussion + '\n')
+                            print(ColorMessage.blue(f"{discussion}"))
 
                         for idx, player in enumerate(player_list):
                             proxy.set_current_agent(idx)
-                            await player.discussion_end(
-                                leader=leader,
-                                leader_statement=statement,
-                                discussion_history=discussion_history
-                            )
+                            if self.agent_list[idx] == "llm":
+                                await player.discussion_end(
+                                    leader=leader,
+                                    leader_statement=statement,
+                                    discussion_history=discussion_history
+                                )
 
                     # Choose a team
                     proxy.set_current_agent(leader)

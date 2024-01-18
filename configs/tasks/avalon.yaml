@@ -3,18 +3,18 @@ default:
   parameters:
     concurrency: 5
     num_players: 5
-    discussion: False
+    discussion: True
 
 avalon-dev-naive:
   parameters:
     name: "AvalonBench-dev-naive"
-    data_file: "data/avalon/dev.json"
+    data_file: "data/avalon/dev1.json"
     agent_list: ["naive", "naive", "naive", "naive", "naive"]
 
 avalon-dev-single:
   parameters:
     name: "AvalonBench-dev-single"
-    data_file: "data/avalon/dev.json"
+    data_file: "data/avalon/dev1.json"
     agent_list: ["llm", "naive", "naive", "naive", "naive"]
     discussion: True
 

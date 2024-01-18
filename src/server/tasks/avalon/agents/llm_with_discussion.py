@@ -163,19 +163,11 @@ class LLMAgentWithDiscussion(Agent):
                      "team": team, "team_leader_id": team_leader_id, "team_size": team_size}
             statement = await self.session.action(input)
             proposed_team = await self.session.parse_result(input, statement)
-            print()
-            print(ColorMessage.cyan(f"##### LLM Agent (Player {self.id}, Role: {self.role_name}) #####"))
-            print()
-            print(ColorMessage.blue(f"Said: {statement}"))
             return proposed_team, statement
         else:
             content_prompt = ' '.join(discussion_history) + ' ' + VOTE_TEAM_DISCUSSION.format(self.id, list(team))
             input = {"content": content_prompt, "role": "user"}
             discussion = await self.session.action(input)
-            print()
-            print(ColorMessage.cyan(f"##### LLM Agent (Player {self.id}, Role: {self.role_name}) #####"))
-            print()
-            print(ColorMessage.blue(f"Said: {discussion}"))
             return discussion
 
     async def quest_discussion(self, team_size, team, team_leader_id, discussion_history, mission_id):

@@ -130,8 +130,8 @@ class Session:
 
         omit = len(messages) - len(return_messages) - 1
 
-        if omit > 0:
-            instruction += f"\n\n[NOTICE] {omit} messages are omitted."
+        #if omit > 0:
+            #instruction += f"\n\n[NOTICE] {omit} messages are omitted."
             # print(f"Warning: {omit} messages are omitted.")
 
         return_messages.append(ChatHistoryItem(role="user", content=instruction))

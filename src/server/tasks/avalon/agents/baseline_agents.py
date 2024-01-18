@@ -80,14 +80,15 @@ class NaiveAgent(Agent):
 
     async def team_discussion(self, team_size, team, team_leader_id, discussion_history, mission_id):
         if self.id == team_leader_id:
-            proposed_team = await list(self.propose_team(mission_id))
-            return proposed_team, f"I think Players {' '.join(proposed_team)} are all good. Hence, I propose them to form the team."
+            proposed_team = await self.propose_team(mission_id=mission_id)
+            players = ' '.join([str(x) for x in list(proposed_team)])
+            return proposed_team, f"I think Players {players} are all good. Hence, I propose them to form the team."
         else:
-            vote = await self.vote_on_team(mission_id, team)
-            if vote:
-                return f"I think the players in the team are good. Hence, I approve the team."
+            vote = await self.vote_on_team(mission_id=mission_id, team=team)
+            if vote == 1:
+                return "I think the players in the team are good. Hence, I approve the team."
             else:
-                return f"I think the players in the team have some evil ones. Hence, I reject the team. "
+                return "I think the players in the team have some evil ones. Hence, I reject the team. "
 
     async def assassinate(self):
         return random.randint(0, self.config.num_players - 1)
@@ -128,7 +129,7 @@ class NaiveMinion(NaiveAgent):
     async def vote_on_team(self, mission_id: int, team: frozenset, **kwargs):
         # approve if there are at least x evil player(s) on the team, where x is number of fails required for this mission
         num_fails = self.config.num_fails_for_quest[mission_id]
-        if sum([self.player_sides[i] == 0 for i in team]) >= num_fails:
+        if sum([self.player_sides[i] == 0 for i in list(team)]) >= num_fails:
             return 1
         else:
             return 0
@@ -173,7 +174,7 @@ class NaiveAssassin(NaiveAgent):
     async def vote_on_team(self, team: frozenset, mission_id: int, **kwargs):
         # approve if there are at least x evil player(s) on the team, where x is number of fails required for this mission
         num_fails = self.config.num_fails_for_quest[mission_id]
-        if sum([self.player_sides[i] == 0 for i in team]) >= num_fails:
+        if sum([self.player_sides[i] == 0 for i in list(team)]) >= num_fails:
             return 1
         else:
             return 0
@@ -211,7 +212,7 @@ class NaiveMerlin(NaiveAgent):
 
     async def vote_on_team(self, team: frozenset, mission_id: int, **kwargs):
         # approve if there are no evil players on the team
-        if any([self.player_sides[i] == 0 for i in team]):
+        if any([self.player_sides[int(i)] == 0 for i in list(team)]):
             return 0
         else:
             return 1
@@ -329,10 +330,7 @@ class NaiveServant(NaiveAgent):
 
     async def team_discussion(self, team_size, team, team_leader_id, discussion_history, mission_id):
         if self.id == team_leader_id:
-            print()
-            print(ColorMessage.cyan(f"##### LLM Agent (Player {self.id}, Role: {self.role_name}) #####"))
-            print()
-            proposed_team = await self.propose_team(mission_id)
+            proposed_team = await self.propose_team(mission_id=mission_id)
             team_members = ["Player " + str(member) for member in list(proposed_team)]
             if mission_id != 0:
                 statement = (f"I think that those teams who have completed successful missions in the past are worth "
@@ -341,13 +339,9 @@ class NaiveServant(NaiveAgent):
             else:
                 statement = (f"The game has just started. I don't have any information regarding the players' "
                              f"identity. I just randomly select a team with {', '.join(team_members)}")
-            print(ColorMessage.blue(f"Said: {statement}"))
             return proposed_team, statement
         else:
-            print()
-            print(ColorMessage.cyan(f"##### LLM Agent (Player {self.id}, Role: {self.role_name}) #####"))
-            print()
-            vote = await self.vote_on_team(team, mission_id)
+            vote = await self.vote_on_team(team=team, mission_id=mission_id)
             if vote and mission_id != 0:
                 statement = (f"I think that those teams who have completed successful missions in the past are worth "
                              f"trust. Those teams who have failed missions in the past should not be selected again. "
@@ -448,4 +442,4 @@ if __name__ == "__main__":
         'role_names': ['Servant', 'Minion', 'Merlin', 'Assassin', 'Servant']
     })
     config = env.config
-    player_0 = find_naive_agent['Merlin'](0, 'player_0', config)
+    player_0 = find_naive_agent(**config)
