@@ -155,7 +155,7 @@ class AvalonBench(Task):
                             team=None,
                             team_leader_id=leader,
                             discussion_history=discussion_history,
-                            mission_id=env.turn + env.round
+                            mission_id=env.turn
                         )
                         discussion_history.append(f"Leader {leader} : " + statement + '\n')
                         print()
@@ -176,7 +176,7 @@ class AvalonBench(Task):
                                 team=team,
                                 team_leader_id=leader,
                                 discussion_history=discussion_history,
-                                mission_id=env.turn + env.round
+                                mission_id=env.turn
                             )
                             discussion_history.append(f"Player {idx} : " + discussion + '\n')
                             print(ColorMessage.blue(f"{discussion}"))
@@ -306,6 +306,10 @@ class AvalonBench(Task):
                                                                       outcome=outcome[2]))
 
                     # reflect sides of each player at the end of the game
+                    print()
+                    print(ColorMessage.cyan(f"##### System #####"))
+                    print()
+                    print("Reflect sides of each player")
                     for idx, player in enumerate(player_list):
                         proxy.set_current_agent(idx)
                         if self.agent_list[idx] == "llm":

@@ -145,7 +145,7 @@ class TransformerAgent(AgentClient):
             new_prompt = [{"role": "user", "content": "\n".join(new_prompts)}]
             model_inputs = self.tokenizer.apply_chat_template(new_prompt, tokenize=True, add_generation_prompt=True,
                                                               return_tensors="pt")
-            resp = self.model.generate(model_inputs, max_new_tokens=512)
+            resp = self.model.generate(model_inputs.to('cuda'), max_new_tokens=512)
             resp = self.tokenizer.decode(resp[0])
             resp = resp[(resp.rfind("[/INST]") + len("[/INST]")):].replace("</s>", "")
         except AgentClientException as e:

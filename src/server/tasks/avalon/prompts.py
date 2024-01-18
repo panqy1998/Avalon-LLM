@@ -111,25 +111,26 @@ following template:
 Answer: [player_id_num]
 """
 
-CHECK_BELIEVED_SIDES_PROMPT = r"""Based on the above information, to what extend do you believe for each player to be 
-on your side, from Player 0 to Player 4 with probabilities within [0, 1]. You can simply output 0.5 for players whose 
-information is not given. Please summarize with the following template:
+CHECK_BELIEVED_SIDES_PROMPT = r"""Based on the above information, please simply output the probability for player {}, 
+which is a decimal number from 0 to 1  with the following template without including any other information:
 
-Answer: {0: score_for_0, 1: score_for_1, 2: score_for_2, 3: score_for_3, 4: score_for_4}
+Answer: [probability_value]
 """
 
 COTHOUGHT_PROMPT = """Please forget you are an AI. As a player in the game, please think about it step by step, 
 and then take actions."""
 
 # Action Prompts
-CHOOSE_TEAM_LEADER = """You are the leader this round. Please make some statements about what team you want to propose.
+CHOOSE_TEAM_LEADER = """You are the leader this round. Please make some statements about what team you want to propose
+to all the players. 
 """
 
 CHOOSE_TEAM_ACTION = """Please choose {} players from player ids 0 to {} as team members.
 """
 
 VOTE_TEAM_DISCUSSION = """You are Player {}. This is discussion phase, and you don’t need to take any actions. 
-Please discuss your thoughts on the team {} with just one sentence.
+Please discuss your thoughts on the team {} with just one sentence to all the players. Team size is fixed. 
+Don't comment on the team size. 
 """
 
 VOTE_TEAM_ACTION = """You're Player {}. Do you approve the team {}? Please answer `Yes` or `No`.

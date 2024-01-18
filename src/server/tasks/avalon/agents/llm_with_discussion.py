@@ -99,17 +99,22 @@ class LLMAgentWithDiscussion(Agent):
         })
 
     async def summarize(self) -> None:
+        side = "good" if self.side == 1 else "evil"
         summary = await self.session.action({
             "role": "user",
-            "content": "You are Player {}. Your identity is {}. Please summarize the history. "
+            "content": "You are Player {} with identity {} on the {} side. Please summarize the history. "
                        "Try to keep all useful information, "
                        "including your identity, other player's identities, and your observations in the game.".format(
-                self.id, self.role_name),
+                self.id, self.role_name, side),
             "mode": "summarize"
         })
         # print("Summary: ", summary)
         past_history = deepcopy(self.session.get_history())
         self.session.overwrite_history(past_history[:2])
+        self.session.inject({
+            'role': "user",
+            'content': summary
+        })
         # print("History after summarization: ", self.session.get_history())
 
     async def observe_mission(self, team, mission_id, num_fails, votes, outcome) -> None:
@@ -129,14 +134,18 @@ class LLMAgentWithDiscussion(Agent):
             "mode": "get_believed_sides",
         }
         believed_player_sides = await self.session.action(input)
-
-        believed_player_sides = await self.session.parse_result(
-            input=input,
-            result=believed_player_sides
-        )
-        print("Sides: ", believed_player_sides)
-        self.infer_relation = believed_player_sides
-        return believed_player_sides
+        print(f"Player {self.id} thinks:\n {believed_player_sides}")
+        sides = []
+        for p in range(self.config.num_players):
+            input["target"] = p
+            side = await self.session.parse_result(
+                    input=input,
+                    result=believed_player_sides
+                )
+            sides.append(side)
+        print("Sides: ", sides)
+        self.infer_relation = sides
+        return sides
 
     async def discussion_end(self, leader: str, leader_statement: str, discussion_history: List[str]):
         content_prompt = (f"Discussion has ended. "
@@ -153,8 +162,7 @@ class LLMAgentWithDiscussion(Agent):
 
         We also summarize the history before this phase at each round. If there's no discussion phase, we summarize the history before the vote phase.
         """
-        if mission_id != 0:
-            await self.summarize()
+        await self.summarize()
 
         fails_required = self.config.num_fails_for_quest[mission_id]
         if self.id == team_leader_id:
