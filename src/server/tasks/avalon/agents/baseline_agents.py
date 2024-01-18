@@ -80,10 +80,10 @@ class NaiveAgent(Agent):
 
     async def team_discussion(self, team_size, team, team_leader_id, discussion_history, mission_id):
         if self.id == team_leader_id:
-            proposed_team = list(self.propose_team(mission_id))
+            proposed_team = await list(self.propose_team(mission_id))
             return proposed_team, f"I think Players {' '.join(proposed_team)} are all good. Hence, I propose them to form the team."
         else:
-            vote = self.vote_on_team(mission_id, team)
+            vote = await self.vote_on_team(mission_id, team)
             if vote:
                 return f"I think the players in the team are good. Hence, I approve the team."
             else:
@@ -332,7 +332,7 @@ class NaiveServant(NaiveAgent):
             print()
             print(ColorMessage.cyan(f"##### LLM Agent (Player {self.id}, Role: {self.role_name}) #####"))
             print()
-            proposed_team = self.propose_team(mission_id)
+            proposed_team = await self.propose_team(mission_id)
             team_members = ["Player " + str(member) for member in list(proposed_team)]
             if mission_id != 0:
                 statement = (f"I think that those teams who have completed successful missions in the past are worth "
@@ -347,7 +347,7 @@ class NaiveServant(NaiveAgent):
             print()
             print(ColorMessage.cyan(f"##### LLM Agent (Player {self.id}, Role: {self.role_name}) #####"))
             print()
-            vote = self.vote_on_team(team, mission_id)
+            vote = await self.vote_on_team(team, mission_id)
             if vote and mission_id != 0:
                 statement = (f"I think that those teams who have completed successful missions in the past are worth "
                              f"trust. Those teams who have failed missions in the past should not be selected again. "
