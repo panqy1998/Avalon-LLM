@@ -4,7 +4,7 @@ parameters:
   proxies: {'http': 'http://127.0.0.1:7890', 'https': 'http://127.0.0.1:7890'}
   headers:
     Content-Type: application/json
-    Authorization: Bearer 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
+    Authorization: Bearer <API-token>
   body:
     temperature: 0.1
   prompter:

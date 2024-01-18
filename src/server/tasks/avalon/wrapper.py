@@ -221,25 +221,14 @@ class SessionWrapper:
             answer = answer.content
             answer = int(get_assassination_result(result, answer))
         elif mode == "get_believed_sides":
-            try:
-                self.session.inject({
+            self.session.inject({
                     "role": "user",
                     "content": "The player says:" + result + '\n\n' + CHECK_BELIEVED_SIDES_PROMPT.format(input["target"])
                 })
-                answer = await self.session.action()
-                answer = answer.content
-                scores = get_believed_player_sides(answer)
-            except:
-                self.session.inject({
-                    "role": "user",
-                    "content": "The player says:" + result + '\n\n' + CHECK_BELIEVED_SIDES_PROMPT
-                })
-                answer = await self.session.action()
-                answer = answer.content
-                scores = get_believed_player_sides(answer)
-            answer = []
-            for i in range(5):
-                answer.append(scores[i])
+            answer = await self.session.action()
+            answer = answer.content
+            answer = get_believed_player_sides(answer)
+
 
         # Restore the history
         self.session.history = deepcopy(past_history)
