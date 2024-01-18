@@ -112,13 +112,11 @@ class TransformerAgent(AgentClient):
             **kwargs,
     ) -> None:
         super().__init__(**kwargs)
-        try:
-            self.model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", load_in_4bit=load_in_4bit,
-                                                              token=access_token,
-                                                              cache_dir=cache_dir)
-            self.tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=use_fast, token=access_token)
-        except:
-            raise Exception("Cannot load {}".format(model_name))
+        self.model_name = model_name
+        self.access_token = access_token
+        self.load_in_4bit = load_in_4bit
+        self.cache_dir = cache_dir
+        self.use_fast = use_fast
         self.body = body or {}
         self.return_format = return_format
         self.prompter = Prompter.get_prompter(prompter)
@@ -130,10 +128,19 @@ class TransformerAgent(AgentClient):
         try:
             body = self.body.copy()
             body.update(self._handle_history(history))
-            prompt = "\n".join(body["messages"]["content"])
-            model_inputs = self.tokenizer(prompt, return_tensors="pt").to("cuda:0")
-            resp = self.model.generate(**model_inputs)
-            resp = self.tokenizer.decode(resp[0], skip_special_tokens=True).cpu()
+            prompt = body["messages"]
+            try:
+                self.model = AutoModelForCausalLM.from_pretrained(self.model_name, device_map="auto",
+                                                                  load_in_4bit=self.load_in_4bit,
+                                                                  token=self.access_token,
+                                                                  cache_dir=self.cache_dir)
+                self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, use_fast=self.use_fast, token=self.access_token)
+            except:
+                raise Exception("Cannot load {}".format(self.model_name))
+            model_inputs = self.tokenizer.apply_chat_template(prompt, tokenize=True, add_generation_prompt=True, return_tensors="pt")
+            resp = self.model.generate(model_inputs, max_new_tokens=512)
+            resp = self.tokenizer.decode(resp[0]).cpu()
+            resp = resp[(resp.rfind("[INST]")+len("[INST]")):].replace("</s>", "")
         except AgentClientException as e:
             raise e
         except Exception as e:
