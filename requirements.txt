@@ -6,13 +6,13 @@ pyyaml~=6.0
 jsonlines~=3.1.0
 aiohttp~=3.8.4
 uvicorn~=0.22.0
-fastapi~=0.101.1
-urllib3~=1.25.11
+urllib3~=1.26
 mysql-connector-python==8.0.33
 docker==6.1.2
 SPARQLWrapper
 networkx~=2.8.4
 anthropic~=0.4.1
-fschat~=0.2.31
+fschat~=0.2.35
 accelerate~=0.23.0
 transformers~=4.34.0
+fastapi~=0.109.0

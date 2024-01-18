@@ -1,3 +1,11 @@
+llama2-7b:
+    import: "./transformer-chat.yaml"
+    parameters:
+        name: "llama2-7b"
+        body:
+            model: "llama2-7b"
+            max_tokens: 512
+
 gpt-3.5-turbo-0613:
     import: "./openai-chat.yaml"
     parameters:

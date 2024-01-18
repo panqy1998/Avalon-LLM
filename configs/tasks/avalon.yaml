@@ -16,6 +16,7 @@ avalon-dev-single:
     name: "AvalonBench-dev-single"
     data_file: "data/avalon/dev.json"
     agent_list: ["llm", "naive", "naive", "naive", "naive"]
+    discussion: True
 
 avalon-dev-multi:
   parameters:

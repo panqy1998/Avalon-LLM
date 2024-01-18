@@ -7,12 +7,13 @@ concurrency:
     #avalon-dev-naive: 3
   agent:
     #gpt-3.5-turbo-0613: 3
-    gpt-4-0613: 3
+    #gpt-4-0613: 3
+    llama2-7b: 1
 
 assignments: # List[Assignment] | Assignment
   - agent: # "task": List[str] | str ,  "agent": List[str] | str
     #  - gpt-3.5-turbo-0613
-      - gpt-4-0613
+      - llama2-7b
     task:
       # - avalon-dev-multi
       - avalon-dev-single
