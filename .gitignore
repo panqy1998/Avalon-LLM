@@ -21,3 +21,6 @@ Search/output
 client/agents/model
 src/client/agents/model
 configs/agents/openai-chat.yaml
+configs/agents/transformer-chat.yaml
+configs/agents/openai-chat.yaml
+configs/agents/transformer-chat.yaml
