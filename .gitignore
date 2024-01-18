@@ -19,3 +19,4 @@ src/server/tasks/card_game/result
 analysis
 Search/output
 client/agents/model
+src/client/agents/model
