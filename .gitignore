@@ -18,3 +18,4 @@ src/server/tasks/card_game/result
 .dockerfile-cache
 analysis
 Search/output
+client/agents/model
