@@ -1,7 +1,7 @@
 module: src.client.agents.TransformerAgent
 parameters:
   model_name: meta-llama/Llama-2-7b-chat-hf
-  access_token: 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
+  access_token: <token>
   load_in_4bit: True
   cache_dir: src/client/agents/model/
   use_fast: True
