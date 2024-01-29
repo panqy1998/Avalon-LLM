@@ -154,9 +154,10 @@ good, including {} Merlin, and {} Servant(s). {} players are evil, including 1 A
 INFO_YOUR_ROLE = """You are {}, with identity {}. You are on the side of {}. Please do not forget your identity 
 throughout the game."""
 
-RELATION_PROMPT = """On the former round, you have stated that you believe Player 1 on your side with {} probability, 
-Player 2 on your side with {} probability, Player 3 on your side with {} probability and Player 4 on your side with {
-} probability. Based on this statement, please think about it step by step and take actions. """
+RELATION_PROMPT = """On the former round, you have stated that you believe Player 0 on your side with {} probability, 
+Player 1 on your side with {} probability, 
+Player 2 on your side with {} probability, Player 3 on your side with {} probability and Player 4 on your side with {} probability. 
+Based on this statement, please think about it step by step and take actions. """
 
 ICL_PROPOSE_TEAM_PROMPT = """For example, a player can propose a team including himself so that at least one player 
 in the team is good."""

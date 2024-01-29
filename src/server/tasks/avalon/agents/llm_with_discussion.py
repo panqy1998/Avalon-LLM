@@ -22,7 +22,8 @@ class LLMAgentWithDiscussion(Agent):
         self.session = session
         self.discussion = kwargs.pop('discussion', None)
         self.prompt = kwargs.pop('prompt', 'COT')
-        self.infer_relation = []
+        self.infer_relation = [0.5]*num_players
+        self.infer_relation[id] = 1
         for key, value in kwargs.items():
             setattr(self, key, value)
 
