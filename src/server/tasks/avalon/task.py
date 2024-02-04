@@ -149,14 +149,17 @@ class AvalonBench(Task):
                     if self.discussion:
                         # Leader speaks
                         print(f"Discussion")
+                        game_env_log.append("Discussion")
                         proxy.set_current_agent(leader)
                         team, statement = await player_list[leader].team_discussion(
                             team_size=env.get_team_size(),
                             team=None,
                             team_leader_id=leader,
                             discussion_history=discussion_history,
-                            mission_id=env.turn
+                            mission_id=env.turn,
+                            round_id=env.round
                         )
+                        game_env_log.append(f"Leader {leader} : " + statement)
                         discussion_history.append(f"Leader {leader} : " + statement + '\n')
                         print()
                         print(ColorMessage.cyan(f"##### LLM Agent (Player {leader}) #####"))
@@ -176,10 +179,11 @@ class AvalonBench(Task):
                                 team=team,
                                 team_leader_id=leader,
                                 discussion_history=discussion_history,
-                                mission_id=env.turn
+                                mission_id=env.turn, round_id=env.round
                             )
                             discussion_history.append(f"Player {idx} : " + discussion + '\n')
                             print(ColorMessage.blue(f"{discussion}"))
+                            game_env_log.append(f"Player {idx} : " + discussion)
 
                         for idx, player in enumerate(player_list):
                             proxy.set_current_agent(idx)
@@ -187,17 +191,18 @@ class AvalonBench(Task):
                                 await player.discussion_end(
                                     leader=leader,
                                     leader_statement=statement,
-                                    discussion_history=discussion_history
+                                    discussion_history=discussion_history[1:]
                                 )
 
                     # Choose a team
                     proxy.set_current_agent(leader)
-                    if self.agent_list[leader] != "naive" or not self.discussion:
+                    if self.agent_list[leader] == "llm" or not self.discussion:
                         team = await player_list[leader].propose_team(
                             team_size=env.get_team_size(),
                             mission_id=env.turn,
                             discussion_history=discussion_history
                         )
+                    print(ColorMessage.cyan(f"##### Discussion End #####"))
                     env.choose_quest_team(
                         team=frozenset(team),
                         leader=leader
@@ -291,7 +296,7 @@ class AvalonBench(Task):
                         proxy.set_current_agent(idx)
                         await player.observe_mission(
                             team=frozenset(env.get_current_quest_team()),
-                            mission_id=env.turn - 1,
+                            mission_id=env.turn,
                             num_fails=outcome[3],
                             votes=votes,
                             outcome=outcome[2],

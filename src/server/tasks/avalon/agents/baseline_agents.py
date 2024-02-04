@@ -78,7 +78,7 @@ class NaiveAgent(Agent):
     async def observe_team_result(self, mission_id, team: frozenset, votes: List[int], outcome: Tuple):
         pass
 
-    async def team_discussion(self, team_size, team, team_leader_id, discussion_history, mission_id):
+    async def team_discussion(self, team_size, team, team_leader_id, discussion_history, mission_id, **kargs):
         if self.id == team_leader_id:
             proposed_team = await self.propose_team(mission_id=mission_id)
             players = ' '.join([str(x) for x in list(proposed_team)])
@@ -328,7 +328,7 @@ class NaiveServant(NaiveAgent):
                         return max_teams
             return list(set(max_teams))
 
-    async def team_discussion(self, team_size, team, team_leader_id, discussion_history, mission_id):
+    async def team_discussion(self, team_size, team, team_leader_id, discussion_history, mission_id, **kwargs):
         if self.id == team_leader_id:
             proposed_team = await self.propose_team(mission_id=mission_id)
             team_members = ["Player " + str(member) for member in list(proposed_team)]
@@ -358,11 +358,13 @@ class NaiveServant(NaiveAgent):
     async def vote_on_team(self, team: frozenset, mission_id: int, **kwargs):
         # print('vote', self.team_preferences)
         # if team is in most preferred teams, approve, otherwise reject
+        self.team_preferences = self.generate_team_preferences(mission_id)
         return 1 if team in self.find_most_prefered_teams(self.team_preferences) else 0
 
     async def propose_team(self, mission_id: int, **kwargs):
         # propose random team in most preferred teams
         # print('propose', self.team_preferences)
+        self.team_preferences = self.generate_team_preferences(mission_id)
         return random.choice(self.find_most_prefered_teams(self.team_preferences))
 
     async def observe_mission(self, team: frozenset, mission_id: int, num_fails: int, **kargs):

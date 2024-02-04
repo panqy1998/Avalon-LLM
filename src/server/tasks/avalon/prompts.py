@@ -148,21 +148,21 @@ Player 4? Please output probabilities within [0, 1] and round to two decimal pla
 you can simply output 0.5."""
 
 # Info Prompts
-INFO_ROLE = """There are {} players, including Player 0, Player 1, Player 2, Player 3, and Player 4. {} players are 
+INFO_ROLE = """There are {} players, including Player 0, Player 1, Player 2, Player 3, and Player 4. {} players are \
 good, including {} Merlin, and {} Servant(s). {} players are evil, including 1 Assassin, and {} Minion."""
 
-INFO_YOUR_ROLE = """You are {}, with identity {}. You are on the side of {}. Please do not forget your identity 
+INFO_YOUR_ROLE = """You are {}, with identity {}. You are on the side of {}. Please do not forget your identity \
 throughout the game."""
 
-RELATION_PROMPT = """On the former round, you have stated that you believe Player 0 on your side with {} probability, 
-Player 1 on your side with {} probability, 
-Player 2 on your side with {} probability, Player 3 on your side with {} probability and Player 4 on your side with {} probability. 
+RELATION_PROMPT = """On the former round, you have stated that you believe Player 0 on your side with {:.2f} probability, \
+Player 1 on your side with {:.2f} probability, \
+Player 2 on your side with {:.2f} probability, Player 3 on your side with {} probability and Player 4 on your side with {:.2f} probability. \
 Based on this statement, please think about it step by step and take actions. """
 
-ICL_PROPOSE_TEAM_PROMPT = """For example, a player can propose a team including himself so that at least one player 
+ICL_PROPOSE_TEAM_PROMPT = """For example, a player can propose a team including himself so that at least one player \
 in the team is good."""
 
-ICL_VOTE_TEAM_SERVANT_PROMPT = """For example, a servant reject the team to gain more information at the current 
+ICL_VOTE_TEAM_SERVANT_PROMPT = """For example, a servant reject the team to gain more information at the current \
 phase."""
 
 ICL_VOTE_TEAM_MERLIN_PROMPT = """For example, a merlin can follow his servants' actions as the merlin know who are the 

@@ -61,9 +61,9 @@ def verbalize_team_result(team: frozenset, votes, outcome: bool):
 
 def verbalize_mission_result(team: frozenset, outcome: bool):
     verbalized_result = ""
-    if outcome == True:
+    if outcome:
         verbalized_result = "The mission succeeded."
-    elif outcome == False:
+    elif not outcome:
         verbalized_result = "The mission failed."
     else:
         raise ValueError("Invalid outcome %s" % outcome)

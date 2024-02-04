@@ -22,7 +22,7 @@ class LLMAgentWithDiscussion(Agent):
         self.session = session
         self.discussion = kwargs.pop('discussion', None)
         self.prompt = kwargs.pop('prompt', 'COT')
-        self.infer_relation = [0.5]*num_players
+        self.infer_relation = [0.5] * num_players
         self.infer_relation[id] = 1
         for key, value in kwargs.items():
             setattr(self, key, value)
@@ -39,6 +39,10 @@ class LLMAgentWithDiscussion(Agent):
 
     def see_sides(self, sides):
         self.player_sides = sides
+        if self.side == 1:
+            self.infer_relation = sides
+        else:
+            self.infer_relation = [1 - side for side in sides]
 
     async def initialize_game_info(self, player_list) -> None:
         """Initiliaze the game info for the agent, which includes game introduction, role, and reveal information for different roles."""
@@ -99,14 +103,24 @@ class LLMAgentWithDiscussion(Agent):
             "mode": "system",
         })
 
-    async def summarize(self) -> None:
+    async def summarize(self, mission_id=None, round_id=None) -> None:
         side = "good" if self.side == 1 else "evil"
+        if mission_id is None:
+            content = "You are Player {} with identity {} on the {} side." \
+                      "Please summarize the history.  " \
+                      "Try to keep all useful information,  including your identity, other player's identities, " \
+                      "and your observations in the game.".format(self.id, self.role_name, side)
+        else:
+            content = "You are Player {} with identity {} on the {} side. Now you are at Mission {}, Round {}. " \
+                      "Please summarize the history.  " \
+                      "Try to keep all useful information,  including your identity, other player's identities, " \
+                      "and your observations in the game.".format(self.id, self.role_name, side, mission_id, round_id)
+        if self.prompt == "RELATION" or self.prompt == "RELATION+ICL":
+            thought = RELATION_PROMPT.format(*self.infer_relation)
+            content = content + "\n" + thought
         summary = await self.session.action({
             "role": "user",
-            "content": "You are Player {} with identity {} on the {} side. Please summarize the history. "
-                       "Try to keep all useful information, "
-                       "including your identity, other player's identities, and your observations in the game.".format(
-                self.id, self.role_name, side),
+            "content": content,
             "mode": "summarize"
         })
         # print("Summary: ", summary)
@@ -118,8 +132,11 @@ class LLMAgentWithDiscussion(Agent):
         })
         # print("History after summarization: ", self.session.get_history())
 
-    async def observe_mission(self, team, mission_id, num_fails, votes, outcome) -> None:
-        pass
+    async def observe_mission(self, team, mission_id, num_fails, votes, outcome, **kwargs) -> None:
+        await self.session.action(
+            {"role": "user",
+             "content": verbalize_mission_result(team, outcome)}
+        )
 
     async def observe_team_result(self, mission_id, team: frozenset, votes: List[int], outcome: bool) -> None:
         await self.session.action({
@@ -140,9 +157,9 @@ class LLMAgentWithDiscussion(Agent):
         for p in range(self.config.num_players):
             input["target"] = p
             side = await self.session.parse_result(
-                    input=input,
-                    result=believed_player_sides
-                )
+                input=input,
+                result=believed_player_sides
+            )
             sides.append(side)
         print("Sides: ", sides)
         self.infer_relation = sides
@@ -150,7 +167,7 @@ class LLMAgentWithDiscussion(Agent):
 
     async def discussion_end(self, leader: str, leader_statement: str, discussion_history: List[str]):
         content_prompt = (f"Discussion has ended. "
-                          f"Here are the contents:\nStatement from Leader {leader}: \n\"{leader_statement}\"\n"
+                          f"Here are the contents:\nStatement from Leader {leader}: {leader_statement}"
                           f"And words from other players:\n{' '.join(discussion_history)}")
         self.session.inject({
             "role": "user",
@@ -158,12 +175,12 @@ class LLMAgentWithDiscussion(Agent):
         })
         await self.summarize()
 
-    async def team_discussion(self, team_size, team, team_leader_id, discussion_history, mission_id):
+    async def team_discussion(self, team_size, team, team_leader_id, discussion_history, mission_id, round_id):
         """Team discussion phase.
 
         We also summarize the history before this phase at each round. If there's no discussion phase, we summarize the history before the vote phase.
         """
-        await self.summarize()
+        await self.summarize(mission_id, round_id)
 
         fails_required = self.config.num_fails_for_quest[mission_id]
         if self.id == team_leader_id:
@@ -197,6 +214,15 @@ class LLMAgentWithDiscussion(Agent):
                 thought = ICL_PROPOSE_TEAM_ASSASIN_PROMPT
             else:
                 thought = ICL_PROPOSE_TEAM_PROMPT
+        elif self.prompt == "RELATION+ICL":
+            thought = RELATION_PROMPT.format(*self.infer_relation)
+            if self.role_name == "minion":
+                thought += ICL_PROPOSE_TEAM_MINION_PROMPT
+            elif self.role_name == "assasin":
+                thought += ICL_PROPOSE_TEAM_ASSASIN_PROMPT
+            else:
+                thought += ICL_PROPOSE_TEAM_PROMPT
+
         else:
             thought = ""
         input = {
@@ -243,6 +269,19 @@ class LLMAgentWithDiscussion(Agent):
             thought = COTHOUGHT_PROMPT
         elif self.prompt == "RELATION":
             thought = RELATION_PROMPT.format(*self.infer_relation)
+        elif self.prompt == "ICL":
+            if self.role == "servant":
+                thought = ICL_VOTE_TEAM_SERVANT_PROMPT
+            elif self.role == "merlin":
+                thought = ICL_VOTE_TEAM_MERLIN_PROMPT
+            else:
+                thought = ""
+        elif self.prompt == "RELATION+ICL":
+            thought = RELATION_PROMPT.format(*self.infer_relation) + "\n"
+            if self.role == "servant":
+                thought += ICL_VOTE_TEAM_SERVANT_PROMPT
+            elif self.role == "merlin":
+                thought += ICL_VOTE_TEAM_MERLIN_PROMPT
         else:
             thought = ""
         input = {
@@ -280,8 +319,12 @@ class LLMAgentWithDiscussion(Agent):
     async def vote_on_mission(self, team, mission_id, discussion_history):
         await self.summarize()
         content_prompt = VOTE_MISSION_ACTION.format(list(team))
-
-        thought = COTHOUGHT_PROMPT
+        if self.prompt == "COT":
+            thought = COTHOUGHT_PROMPT
+        elif self.prompt == "RELATION" or self.prompt == "RELATION+ICL":
+            thought = RELATION_PROMPT.format(*self.infer_relation)
+        else:
+            thought = ""
         input = {
             "role": "user",
             "content": content_prompt + "\n" + thought,
@@ -312,8 +355,10 @@ class LLMAgentWithDiscussion(Agent):
         if self.role != 7:
             raise ValueError("Only the Assassin can assassinate.")
         await self.summarize()
-
-        thought = COTHOUGHT_PROMPT
+        if self.prompt == "COT":
+            thought = COTHOUGHT_PROMPT
+        elif self.prompt == "RELATION" or self.prompt == "RELATION+ICL":
+            thought = RELATION_PROMPT.format(*self.infer_relation)
         input = {
             "role": "user",
             "content": ASSASSINATION_PHASE.format(self.num_players - 1) + "\n" + thought,
